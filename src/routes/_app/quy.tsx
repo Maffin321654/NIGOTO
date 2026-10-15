@@ -147,7 +147,7 @@ function Quy() {
       <PageHeader
         kicker="Ban điều hành"
         title="Quỹ"
-        desc={canEdit ? "Hai mục theo học kỳ. Chỉ Chủ nhiệm và Phó chủ nhiệm được sửa." : "Ban quản trị xem quỹ. Chỉ Chủ nhiệm và Phó chủ nhiệm được sửa."}
+        desc={canEdit ? "Hai mục theo học kỳ. Chỉ Chủ nhiệm và Phó chủ nhiệm được sửa." : "Chỉ xem số quỹ, thu chi và ai đã đóng. Không sửa được."}
         action={<span className="text-sm text-muted">Còn {unpaidN} bạn chưa đóng</span>}
       />
       <SemesterBar

@@ -67,6 +67,7 @@ const HEAL_TABLES = [
   "chat_violations",
   "chat_mutes",
   "chat_reactions",
+  "ideas",
 ] as const;
 
 const ADD_COLUMNS: Array<[string, string]> = [
@@ -330,10 +331,14 @@ async function runHeal(sql: Sql) {
       message_id text not null, user_id text not null, emoji text not null default '👍',
       created_at timestamptz not null default now(),
       primary key (message_id, user_id))`,
+    `create table if not exists ideas (
+      id text primary key, title text not null default '', body text not null default '',
+      author_id text not null default '', created_at timestamptz not null default now())`,
   ];
   for (const stmt of createTables) await tryQuery(sql, stmt);
   await tryQuery(sql, `create index if not exists chat_messages_created_idx on chat_messages (created_at)`);
   await tryQuery(sql, `create index if not exists chat_reactions_msg_idx on chat_reactions (message_id)`);
+  await tryQuery(sql, `create index if not exists ideas_created_idx on ideas (created_at)`);
   await tryQuery(sql, `create unique index if not exists fund_dues_sem_user on fund_dues (semester_id, user_id)`);
 
   for (const [table, spec] of ADD_COLUMNS) {

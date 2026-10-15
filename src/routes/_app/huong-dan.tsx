@@ -116,6 +116,8 @@ const BLOCKS: Block[] = [
       "Sự kiện: chỉ thấy sự kiện đã công bố. Bấm vào sự kiện để xem mô tả, thời gian, địa điểm và bấm tham gia.",
       "Khóa học: chỉ thấy khóa đã được Ban Học thuật / Ban Chủ nhiệm công bố. Vào từng khóa để xem video hoặc tài liệu.",
       "Điểm danh: không hiện mã QR. Khi ban quản trị đưa QR, quét hoặc mở link /checkin/… — trang sẽ báo Đã điểm danh.",
+      "Quỹ: xem số tiền quỹ, các khoản thu chi và ai đã đóng quỹ trong học kỳ. Không tick, không sửa số tiền.",
+      "Đóng góp ý tưởng: gửi thư ý tưởng và xem thư của mọi người. Không xóa được.",
       "Chat chung, Thông báo, Hướng dẫn, Hồ sơ.",
     ],
     cannot: [
@@ -123,6 +125,7 @@ const BLOCKS: Block[] = [
       "Không tạo / sửa / xóa sự kiện, khóa học, bài đăng Media, bảng tin, công việc.",
       "Không thấy sự kiện còn là nháp, khóa học chưa công bố, hay content truyền thông.",
       "Không bật/tắt điểm danh, không xem mã QR, không phân ban, không đổi quyền người khác.",
+      "Không sửa quỹ: không tick đóng quỹ, không đổi quỹ gốc, không thêm hoặc xóa khoản thu chi.",
       "Không thấy MSSV đầy đủ của thành viên khác.",
       "Không xóa tin nhắn trên Chat chung.",
     ],

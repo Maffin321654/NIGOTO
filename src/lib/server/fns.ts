@@ -1274,11 +1274,48 @@ export const clearChat = createServerFn({ method: "POST" }).middleware([authMidd
   return { ok: true };
 });
 
+export const listIdeas = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(async ({ context }) => {
+  const { sql, me } = await actorOf(context.userId);
+  const rows = await sql<{ id: string; title: string; body: string; created_at: string; author: string | null }>`
+    select i.id, i.title, i.body, i.created_at, coalesce(p.full_name, '') as author
+    from ideas i
+    left join profiles p on p.user_id = i.author_id
+    order by i.created_at desc`;
+  return {
+    me,
+    rows: rows.map((r) => ({ ...r, author: r.author || "Thành viên" })),
+  };
+});
+
+export const saveIdea = createServerFn({ method: "POST" }).middleware([authMiddleware])
+  .validator((d: { title: string; body: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { sql, me } = await actorOf(context.userId);
+    const title = validateTitle(data.title);
+    const body = validateDesc(data.body);
+    if (!body) throw new Error("Nội dung ý tưởng bắt buộc.");
+    const hit = findBannedWord(`${title} ${body}`);
+    if (hit) throw new Error("Nội dung có từ không được phép.");
+    const id = nid("idea");
+    await sql`insert into ideas (id, title, body, author_id) values (${id}, ${title}, ${body}, ${me.userId})`;
+    await logActivity(sql, me.userId, "create_idea", "idea", id);
+    return { id };
+  });
+
+export const deleteIdea = createServerFn({ method: "POST" }).middleware([authMiddleware])
+  .validator((d: { id: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { sql, me } = await actorOf(context.userId);
+    if (!me.canViewStaff) deny("Chỉ ban quản trị xóa ý tưởng.");
+    await sql`delete from ideas where id = ${data.id}`;
+    await logActivity(sql, me.userId, "delete_idea", "idea", data.id);
+    return { ok: true };
+  });
+
 export const listFund = createServerFn({ method: "POST" }).middleware([authMiddleware])
   .validator((d?: { semesterId?: string }) => d ?? {})
   .handler(async ({ context, data }) => {
     const { sql, me } = await actorOf(context.userId);
-    if (!me.canViewStaff) deny("Chỉ ban quản trị xem quỹ.");
     const sid = (data.semesterId || "").trim();
     if (!sid) return { me, rows: [] as Array<{ user_id: string; full_name: string; student_id: string; status: string; fund_paid: boolean }> };
     const sem = await sql<{ id: string }>`select id from semesters where id = ${sid} limit 1`;
@@ -1300,7 +1337,7 @@ export const listFund = createServerFn({ method: "POST" }).middleware([authMiddl
       rows: rows.map((r) => ({
         ...r,
         fund_paid: publicFlag(r.fund_paid),
-        student_id: r.student_id || "—",
+        student_id: maskIfNeeded(me, r.student_id),
       })),
     };
   });
@@ -1350,8 +1387,7 @@ function moneyAmount(raw: unknown) {
 export const listClubFund = createServerFn({ method: "POST" }).middleware([authMiddleware])
   .validator((d?: { semesterId?: string }) => d ?? {})
   .handler(async ({ context, data }) => {
-    const { sql, me } = await actorOf(context.userId);
-    if (!me.canViewStaff) deny("Chỉ ban quản trị xem quỹ.");
+    const { sql } = await actorOf(context.userId);
     const sid = (data.semesterId || "").trim();
     if (!sid) return { base: 0, balance: 0, entries: [] as Array<{ id: string; kind: string; title: string; amount: number; created_at: string; author: string }> };
     const baseRow = await sql<{ base_amount: string | number }>`

@@ -27,6 +27,7 @@ import { Route as AppPhongVanRouteImport } from './routes/_app/phong-van'
 import { Route as AppQuyRouteImport } from './routes/_app/quy'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
+import { Route as AppYTuongRouteImport } from './routes/_app/y-tuong'
 import { Route as AppCheckinEventIdRouteImport } from './routes/_app/checkin.$eventId'
 import { Route as AppCoursesIndexRouteImport } from './routes/_app/courses.index'
 import { Route as AppCoursesIdRouteImport } from './routes/_app/courses.$id'
@@ -127,6 +128,11 @@ const AppTasksRoute = AppTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppYTuongRoute = AppYTuongRouteImport.update({
+  id: '/y-tuong',
+  path: '/y-tuong',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCheckinEventIdRoute = AppCheckinEventIdRouteImport.update({
   id: '/checkin/$eventId',
   path: '/checkin/$eventId',
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/quy': typeof AppQuyRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRoute
+  '/y-tuong': typeof AppYTuongRoute
   '/checkin/$eventId': typeof AppCheckinEventIdRoute
   '/courses/$id': typeof AppCoursesIdRoute
   '/departments/$id': typeof AppDepartmentsIdRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/quy': typeof AppQuyRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRoute
+  '/y-tuong': typeof AppYTuongRoute
   '/': typeof AppIndexRoute
   '/checkin/$eventId': typeof AppCheckinEventIdRoute
   '/courses/$id': typeof AppCoursesIdRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/_app/quy': typeof AppQuyRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/tasks': typeof AppTasksRoute
+  '/_app/y-tuong': typeof AppYTuongRoute
   '/_app/': typeof AppIndexRoute
   '/_app/checkin/$eventId': typeof AppCheckinEventIdRoute
   '/_app/courses/$id': typeof AppCoursesIdRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/quy'
     | '/settings'
     | '/tasks'
+    | '/y-tuong'
     | '/checkin/$eventId'
     | '/courses/$id'
     | '/departments/$id'
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/quy'
     | '/settings'
     | '/tasks'
+    | '/y-tuong'
     | '/'
     | '/checkin/$eventId'
     | '/courses/$id'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/_app/quy'
     | '/_app/settings'
     | '/_app/tasks'
+    | '/_app/y-tuong'
     | '/_app/'
     | '/_app/checkin/$eventId'
     | '/_app/courses/$id'
@@ -484,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/y-tuong': {
+      id: '/_app/y-tuong'
+      path: '/y-tuong'
+      fullPath: '/y-tuong'
+      preLoaderRoute: typeof AppYTuongRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/checkin/$eventId': {
       id: '/_app/checkin/$eventId'
       path: '/checkin/$eventId'
@@ -629,6 +648,7 @@ interface AppRouteChildren {
   AppQuyRoute: typeof AppQuyRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTasksRoute: typeof AppTasksRoute
+  AppYTuongRoute: typeof AppYTuongRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCheckinEventIdRoute: typeof AppCheckinEventIdRoute
 }
@@ -649,6 +669,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppQuyRoute: AppQuyRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTasksRoute: AppTasksRoute,
+  AppYTuongRoute: AppYTuongRoute,
   AppIndexRoute: AppIndexRoute,
   AppCheckinEventIdRoute: AppCheckinEventIdRoute,
 }
