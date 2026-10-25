@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/input";
 import { ROLE_LABEL, STATUS_LABEL } from "@/lib/constants";
-import { listMembers } from "@/lib/server/fns";
-import { cn } from "@/lib/utils";
+import { exportMembersExcel, getMe, listDepartments, listMembers } from "@/lib/server/fns";
+import { cn, errorMessage } from "@/lib/utils";
 import { useRpc } from "@/lib/use-rpc";
 
 export const Route = createFileRoute("/_app/members/")({ component: Members });
@@ -14,7 +17,12 @@ type SortKey = "name" | "mssv" | "dept";
 
 function Members() {
   const { data, loading, err } = useRpc(() => listMembers());
+  const me = useRpc(() => getMe());
+  const depts = useRpc(() => listDepartments());
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  const [exporting, setExporting] = useState(false);
+  const [exportDept, setExportDept] = useState("");
+  const [includeAlumni, setIncludeAlumni] = useState(false);
   if (loading) return <p className="text-muted">Đang tải…</p>;
   if (err) return <p className="text-accent">{err}</p>;
   const rows = [...(data ?? [])].sort((a, b) => {
@@ -35,6 +43,26 @@ function Members() {
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
   }
 
+  async function downloadExcel() {
+    setExporting(true);
+    try {
+      const file = await exportMembersExcel({ data: { departmentId: exportDept, includeAlumni } });
+      const bin = atob(file.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (er) {
+      toast.error(errorMessage(er));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function Head({ k, label, span }: { k: SortKey; label: string; span: string }) {
     const on = sort.key === k;
     return (
@@ -51,7 +79,26 @@ function Members() {
 
   return (
     <div>
-      <PageHeader kicker="Nhân sự" title="Thành viên" desc="Bấm tiêu đề cột để sắp xếp. Bấm một người để xem hồ sơ." />
+      <PageHeader
+        kicker="Nhân sự"
+        title="Thành viên"
+        desc="Bấm tiêu đề cột để sắp xếp. Bấm một người để xem hồ sơ."
+        action={me.data?.canManageFund ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Select className="w-auto min-w-40" value={exportDept} onChange={(e) => setExportDept(e.target.value)}>
+              <option value="">Tất cả các ban</option>
+              {(depts.data ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+            <label className="flex min-h-11 items-center gap-2 rounded-full border border-line bg-paper-3 px-3 text-sm">
+              <input type="checkbox" checked={includeAlumni} onChange={(e) => setIncludeAlumni(e.target.checked)} />
+              Xuất cựu thành viên
+            </label>
+            <Button variant="ink" disabled={exporting} onClick={() => void downloadExcel()}>
+              {exporting ? "Đang xuất…" : "Xuất Excel"}
+            </Button>
+          </div>
+        ) : undefined}
+      />
       {rows.length === 0 ? <EmptyState title="Chưa có thành viên" /> : (
         <div className="card-paper overflow-hidden">
           <div className="hidden grid-cols-12 items-center gap-2 border-b border-line px-5 py-3 text-xs md:grid">

@@ -198,6 +198,7 @@ const BLOCKS: Block[] = [
       "Công bố hoặc ẩn sự kiện (công tắc công khai). Chỉ sự kiện công khai mới hiện với Ban Thành viên.",
       "Xóa sự kiện (xóa mềm).",
       "Điểm danh: hiện mã QR, bật/tắt «Nhận thêm điểm danh». Tắt khi buổi đã chốt danh sách.",
+      "Đăng ký hộ: trong sự kiện, dán một MSSV hoặc chuỗi MSSV cách nhau bằng dấu phẩy để thêm vào danh sách. Không cần thành viên tự bấm tham gia.",
       "Lịch: mọi sự kiện bạn tạo (kể cả chưa công bố) đều nằm đây.",
       "Công việc (xem), Thống kê, và quyền xem của Ban Thành viên.",
     ],
@@ -228,6 +229,7 @@ const BLOCKS: Block[] = [
       "Chat: xóa từng tin hoặc xóa toàn bộ khung chat. Xem số lần vi phạm chat trên hồ sơ thành viên.",
     ],
     cannot: [
+      "Không xuất Excel danh sách thành viên. Nút đó chỉ Chủ nhiệm và Phó chủ nhiệm thấy.",
       "Không xóa tài khoản của chính mình.",
       "Không xóa Chủ nhiệm cuối cùng của CLB.",
       "Đổi họ tên / MSSV / ngày sinh / email đăng nhập của người khác: chỉ Chủ nhiệm hoặc Trưởng ban Chủ nhiệm, không phải mọi thành viên Ban Chủ nhiệm.",
@@ -246,6 +248,7 @@ const BLOCKS: Block[] = [
     lead: "Thêm một lớp giấy tờ tùy thân. Phó chủ nhiệm điều hành được nhân sự nhưng không sửa giấy tờ.",
     can: [
       "Mọi quyền Ban Chủ nhiệm.",
+      "Xuất Excel thành viên (họ tên, MSSV, email, ban) trên trang Thành viên. Chọn một ban hoặc tất cả, và chọn có lấy cựu thành viên hay không. Phó chủ nhiệm cũng xuất được.",
       "Vào chi tiết thành viên: sửa họ tên, MSSV, ngày sinh, email đăng nhập hộ khi đăng ký sai.",
       "Trưởng ban Chủ nhiệm cũng được sửa giấy tờ — dùng khi Chủ nhiệm vắng.",
     ],

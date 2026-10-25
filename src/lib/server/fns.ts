@@ -15,6 +15,7 @@ import {
   validateTitle,
 } from "@/lib/utils";
 import { deny, loadActor, logActivity, notify, purgeUser, readSignupOpen, writeSignupOpen, type Actor } from "./core";
+import { membersWorkbook } from "./xlsx";
 import { sendEmail } from "./email";
 import { findBannedWord } from "@/lib/chat-filter";
 import { hashPassword } from "better-auth/crypto";
@@ -182,6 +183,64 @@ export const listMembers = createServerFn({ method: "GET" }).middleware([authMid
     order by p.full_name`;
   return rows.map((r) => ({ ...r, student_id: maskIfNeeded(me, r.student_id) }));
 });
+
+export const exportMembersExcel = createServerFn({ method: "POST" }).middleware([authMiddleware])
+  .validator((d?: { departmentId?: string; includeAlumni?: boolean }) => d ?? {})
+  .handler(async ({ context, data }) => {
+    const { sql, me } = await actorOf(context.userId);
+    if (!me.canManageFund) deny("Chỉ Chủ nhiệm và Phó chủ nhiệm xuất danh sách.");
+    const departmentId = (data.departmentId || "").trim();
+    let deptName = "";
+    if (departmentId) {
+      const dept = await sql<{ name: string }>`select name from departments where id = ${departmentId} limit 1`;
+      if (!dept[0]) throw new Error("Không tìm thấy ban.");
+      deptName = dept[0].name;
+    }
+    const includeAlumni = !!data.includeAlumni;
+    const rows = departmentId
+      ? await sql<{ full_name: string; student_id: string | null; email: string; status: string; depts: string | null }>`
+          select p.full_name, p.student_id, u.email, p.status,
+            string_agg(d.name, ', ' order by d.sort_order) as depts
+          from profiles p
+          join "user" u on u.id = p.user_id
+          left join department_members dm on dm.user_id = p.user_id
+          left join departments d on d.id = dm.department_id
+          where p.deleted_at is null
+            and (${includeAlumni} or p.status <> 'ALUMNI')
+            and exists (
+              select 1 from department_members x
+              where x.user_id = p.user_id and x.department_id = ${departmentId}
+            )
+          group by p.user_id, p.full_name, p.student_id, u.email, p.status`
+      : await sql<{ full_name: string; student_id: string | null; email: string; status: string; depts: string | null }>`
+          select p.full_name, p.student_id, u.email, p.status,
+            string_agg(d.name, ', ' order by d.sort_order) as depts
+          from profiles p
+          join "user" u on u.id = p.user_id
+          left join department_members dm on dm.user_id = p.user_id
+          left join departments d on d.id = dm.department_id
+          where p.deleted_at is null
+            and (${includeAlumni} or p.status <> 'ALUMNI')
+          group by p.user_id, p.full_name, p.student_id, u.email, p.status`;
+    const sorted = [...rows].sort((a, b) => (a.full_name || "").localeCompare(b.full_name || "", "vi", { sensitivity: "base" }));
+    const sheet = [
+      ["STT", "Họ tên", "MSSV", "Email", "Ban", "Trạng thái"],
+      ...sorted.map((r, i) => [
+        String(i + 1),
+        r.full_name || "",
+        r.student_id || "",
+        r.email || "",
+        r.depts || "",
+        r.status === "ALUMNI" ? "Cựu thành viên" : r.status === "INACTIVE" ? "Tạm nghỉ" : r.status === "PENDING" ? "Chờ duyệt" : "Đang hoạt động",
+      ]),
+    ];
+    await logActivity(sql, me.userId, "export_members", "profile", departmentId || "all");
+    const slug = deptName ? deptName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "tat-ca";
+    return {
+      filename: `danh-sach-thanh-vien-${slug}.xlsx`,
+      base64: membersWorkbook(sheet).toString("base64"),
+    };
+  });
 
 export const getMember = createServerFn({ method: "POST" }).middleware([authMiddleware])
   .validator((d: { id: string }) => d)
@@ -618,6 +677,48 @@ export const joinEvent = createServerFn({ method: "POST" }).middleware([authMidd
     if (e[0].join_open != null && !publicFlag(e[0].join_open)) throw new Error("Sự kiện đã dừng nhận đăng ký.");
     await sql`insert into event_participants (event_id, user_id) values (${data.id}, ${me.userId}) on conflict do nothing`;
     return { ok: true };
+  });
+
+export const registerEventByMssv = createServerFn({ method: "POST" }).middleware([authMiddleware])
+  .validator((d: { id: string; mssv: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { sql, me } = await actorOf(context.userId);
+    if (!me.canViewStaff) deny("Chỉ ban quản trị thêm đăng ký hộ.");
+    const event = await sql<{ id: string }>`select id from events where id = ${data.id} and deleted_at is null limit 1`;
+    if (!event[0]) throw new Error("Không tìm thấy sự kiện.");
+    const tokens = [...new Set(
+      String(data.mssv || "")
+        .split(/[\s,;]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    )];
+    if (tokens.length === 0) throw new Error("Nhập ít nhất một MSSV.");
+    if (tokens.length > 500) throw new Error("Mỗi lần tối đa 500 MSSV.");
+    const people = await sql<{ user_id: string; student_id: string }>`
+      select user_id, student_id from profiles
+      where deleted_at is null and student_id is not null and student_id <> ''`;
+    const byMssv = new Map(people.map((p) => [p.student_id.trim(), p.user_id]));
+    const alreadyRows = await sql<{ user_id: string }>`select user_id from event_participants where event_id = ${data.id}`;
+    const alreadyIds = new Set(alreadyRows.map((r) => r.user_id));
+    const missing: string[] = [];
+    const already: string[] = [];
+    let added = 0;
+    for (const mssv of tokens) {
+      const userId = byMssv.get(mssv);
+      if (!userId) {
+        missing.push(mssv);
+        continue;
+      }
+      if (alreadyIds.has(userId)) {
+        already.push(mssv);
+        continue;
+      }
+      await sql`insert into event_participants (event_id, user_id) values (${data.id}, ${userId}) on conflict do nothing`;
+      alreadyIds.add(userId);
+      added += 1;
+    }
+    await logActivity(sql, me.userId, "register_event_mssv", "event", data.id, String(added));
+    return { added, already, missing };
   });
 
 export const listAttendanceEvents = createServerFn({ method: "POST" }).middleware([authMiddleware])

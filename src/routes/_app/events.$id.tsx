@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { EVENT_STATUS, EVENT_TYPES, LIMITS, labelOf } from "@/lib/constants";
 import { formatDateTime } from "@/lib/format";
-import { deleteEvent, getEvent, joinEvent, saveEvent, setCheckinOpen, setEventPublic, setEventStatus, setJoinOpen } from "@/lib/server/fns";
+import { deleteEvent, getEvent, joinEvent, registerEventByMssv, saveEvent, setCheckinOpen, setEventPublic, setEventStatus, setJoinOpen } from "@/lib/server/fns";
 import { CoverFrame, coverPosition } from "@/components/cover-frame";
 import { compressImage, errorMessage, toLocalInput } from "@/lib/utils";
 import { useRpc } from "@/lib/use-rpc";
@@ -22,6 +22,8 @@ function EventDetail() {
   const [editing, setEditing] = useState(false);
   const [cover, setCover] = useState("");
   const [coverPos, setCoverPos] = useState("50% 50%");
+  const [mssv, setMssv] = useState("");
+  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   if (loading) return <p className="text-muted">Đang tải sự kiện…</p>;
   if (err || !data) return <p className="text-accent">{err}</p>;
@@ -172,6 +174,39 @@ function EventDetail() {
           </div>
           {qrUrl ? <QrBlock value={qrUrl} label={qrUrl} /> : null}
           <div className="md:col-span-2">
+            <form
+              className="mb-4 space-y-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setAdding(true);
+                try {
+                  const r = await registerEventByMssv({ data: { id, mssv } });
+                  const bits = [`Đã thêm ${r.added}.`];
+                  if (r.already.length) bits.push(`Đã có trong danh sách: ${r.already.join(", ")}.`);
+                  if (r.missing.length) bits.push(`Không thấy MSSV: ${r.missing.join(", ")}.`);
+                  if (r.added) {
+                    toast.success(bits.join(" "));
+                    setMssv("");
+                  } else toast.error(bits.join(" "));
+                  reload();
+                } catch (er) {
+                  toast.error(errorMessage(er));
+                } finally {
+                  setAdding(false);
+                }
+              }}
+            >
+              <Field label="Thêm đăng ký bằng MSSV">
+                <Textarea
+                  value={mssv}
+                  onChange={(e) => setMssv(e.target.value)}
+                  required
+                  placeholder="52400011 hoặc 52400011, 52400012, 52400013"
+                />
+              </Field>
+              <p className="text-xs text-muted">Một MSSV, hoặc nhiều MSSV cách nhau bằng dấu phẩy. Thêm được cả khi đã dừng nhận đăng ký.</p>
+              <Button type="submit" disabled={adding}>{adding ? "Đang thêm…" : "Thêm vào đăng ký"}</Button>
+            </form>
             <div className="hidden grid-cols-12 gap-2 border-b border-line pb-2 text-xs uppercase tracking-wider text-muted md:grid">
               <span className="col-span-4">Họ tên</span>
               <span className="col-span-2">MSSV</span>
